@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+9<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -658,9 +658,43 @@ const firebaseConfig = {
             intercom.toggleMute();
         };
 
-        window.addEventListener('beforeunload', () => {
-            intercom.leaveRoom();
-        });
+// Handle phone calls and app backgrounding
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // App went to background (possibly phone call)
+        console.log('App backgrounded - auto-muting');
+        if (intercom.isConnected && !intercom.isMuted) {
+            intercom.wasAutoMuted = true;
+            intercom.toggleMute();
+        }
+    } else {
+        // App came back to foreground
+        console.log('App foregrounded');
+        if (intercom.wasAutoMuted && intercom.isMuted) {
+            setTimeout(() => {
+                if (confirm('Resume audio? (You were auto-muted during phone call)')) {
+                    intercom.toggleMute();
+                }
+                intercom.wasAutoMuted = false;
+            }, 1000);
+        }
+    }
+});
+
+// Handle audio interruption (phone calls, notifications)
+if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('pause', () => {
+        console.log('Audio interrupted - muting');
+        if (intercom.isConnected && !intercom.isMuted) {
+            intercom.wasAutoMuted = true;
+            intercom.toggleMute();
+        }
+    });
+}
+
+window.addEventListener('beforeunload', () => {
+    intercom.leaveRoom();
+});
     </script>
 </body>
 </html>
